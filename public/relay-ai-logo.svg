@@ -1,0 +1,45 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="relay-bg" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1220"/>
+      <stop offset="1" stop-color="#0E1B2E"/>
+    </linearGradient>
+    <linearGradient id="relay-stroke" x1="24" y1="30" x2="96" y2="92" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE" stop-opacity="0.15"/>
+      <stop offset="0.5" stop-color="#38BDF8" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#6366F1" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="relay-core" x1="60" y1="30" x2="60" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7DD3FC"/>
+      <stop offset="0.5" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Glass tile -->
+  <rect x="4" y="4" width="112" height="112" rx="26" fill="url(#relay-bg)" stroke="#1E293B" stroke-width="1.5"/>
+
+  <!-- Halo ring (signal broadcast) -->
+  <circle cx="60" cy="60" r="34" stroke="url(#relay-stroke)" stroke-width="1.25" fill="none" opacity="0.7"/>
+
+  <!-- Waveform: two routed signal arcs opening left and meeting at the core -->
+  <g stroke="#38BDF8" stroke-width="3" stroke-linecap="round" fill="none">
+    <!-- Inbound arc (microphone → relay core) -->
+    <path d="M36 74 C44 74, 46 60, 53 57"/>
+    <path d="M52 84 C60 84, 62 67, 68 61" opacity="0.55"/>
+    <!-- Outbound arc (relay core → agent) -->
+    <path d="M69 50 C75 45, 78 34, 84 34" opacity="0.75"/>
+  </g>
+
+  <!-- Relay routing node (core) — a four-point overlap forming an intelligent relay chip -->
+  <g transform="translate(0,0)">
+    <path d="M60 44 L72 60 L60 76 L48 60 Z" fill="none" stroke="url(#relay-core)" stroke-width="2.6" stroke-linejoin="round" opacity="0.9"/>
+    <circle cx="60" cy="60" r="3.4" fill="#E0F2FE"/>
+    <circle cx="60" cy="60" r="7" fill="#38BDF8" opacity="0.22"/>
+  </g>
+
+  <!-- Route source dots -->
+  <circle cx="36" cy="74" r="2.4" fill="#22D3EE"/>
+  <circle cx="52" cy="84" r="2" fill="#38BDF8" opacity="0.6"/>
+  <circle cx="84" cy="34" r="2.4" fill="#6366F1"/>
+</svg>
