@@ -7,6 +7,7 @@ import {
   useEffect,
   useCallback,
 } from 'react';
+import type React from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
 import type { RTMClient } from 'agora-rtm';
@@ -31,40 +32,10 @@ const ConversationComponent = dynamic(() => import('./ConversationComponent'), {
   ssr: false,
 });
 
-// Dynamically import AgoraRTCProvider (browser-only).
-// The AgoraVoiceAI toolkit is initialized inside ConversationComponent after
-// the RTC join succeeds, so this wrapper only needs to provide the RTC client.
-const AgoraProvider = dynamic(
-  async () => {
-    const { AgoraRTCProvider, default: AgoraRTC } =
-      await import('agora-rtc-react');
-    return {
-      default: function AgoraProviders({
-        children,
-      }: {
-        children: React.ReactNode;
-      }) {
-        // useRef persists across StrictMode's simulated unmount/remount, so only
-        // one RTC client is ever created per session (useMemo creates two in StrictMode).
-        const clientRef = useRef<ReturnType<
-          typeof AgoraRTC.createClient
-        > | null>(null);
-        if (!clientRef.current) {
-          clientRef.current = AgoraRTC.createClient({
-            mode: 'rtc',
-            codec: 'vp8',
-          });
-        }
-        return (
-          <AgoraRTCProvider client={clientRef.current}>
-            {children}
-          </AgoraRTCProvider>
-        );
-      },
-    };
-  },
-  { ssr: false },
-);
+// AgoraProviders is loaded client-only via a useEffect dynamic import to avoid
+// Turbopack / next/dynamic chunk-cache issues on Vercel.  The state holds the
+// resolved component (or null while loading) so the render tree never sees an
+// undefined element type.
 
 let sessionSeq = 0;
 
@@ -82,6 +53,27 @@ export default function LandingPage() {
 
   // Mirrors whether the live call surface is mounted (drives the nav badge / banner).
   const [isSessionActive, setIsSessionActive] = useState(false);
+
+  // AgoraProviders is resolved client-only.  Loading it here (also eagerly, so it
+  // is ready by the time the user starts a conversation) keeps the ambient
+  // <AgoraProviders> element in the tree valid: a missing provider is a plain
+  // fragment, never an undefined element type.
+  const [AgoraProviderEl, setAgoraProviderEl] = useState<
+    React.ComponentType<{ children: React.ReactNode }> | null
+  >(null);
+  useEffect(() => {
+    let cancelled = false;
+    import('./AgoraProviders')
+      .then((m) => {
+        if (!cancelled) setAgoraProviderEl(() => m.default);
+      })
+      .catch((err) => {
+        console.error('Failed to load AgoraProviders:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Preload heavy modules on mount so they're already cached when the user
   // clicks "Start Conversation" — eliminates the ~1.8s dynamic-import delay.
@@ -276,16 +268,20 @@ export default function LandingPage() {
       )}
       <Suspense fallback={<LoadingSkeleton />}>
         <ErrorBoundary>
-          <AgoraProvider>
-            <ConversationComponent
-              agoraData={agoraData}
-              rtmClient={rtmClient}
-              onTokenWillExpire={handleTokenWillExpire}
-              onEndConversation={handleEndConversation}
-              onIntelligenceUpdate={handleIntelligenceUpdate}
-              onEscalate={handleEscalate}
-            />
-          </AgoraProvider>
+          {AgoraProviderEl ? (
+            <AgoraProviderEl>
+              <ConversationComponent
+                agoraData={agoraData}
+                rtmClient={rtmClient}
+                onTokenWillExpire={handleTokenWillExpire}
+                onEndConversation={handleEndConversation}
+                onIntelligenceUpdate={handleIntelligenceUpdate}
+                onEscalate={handleEscalate}
+              />
+            </AgoraProviderEl>
+          ) : (
+            <LoadingSkeleton />
+          )}
         </ErrorBoundary>
       </Suspense>
     </>
