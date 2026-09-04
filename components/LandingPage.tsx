@@ -8,7 +8,6 @@ import {
   useCallback,
 } from 'react';
 import type React from 'react';
-import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
 import type { RTMClient } from 'agora-rtm';
 import type {
@@ -18,6 +17,7 @@ import type {
   AgoraRenewalTokens,
   RelaySessionUpdate,
 } from '../types/conversation';
+import type { ConversationComponentProps } from '../types/conversation';
 import { ErrorBoundary } from './ErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { Button } from './ui/button';
@@ -27,15 +27,10 @@ import { RelayCasesPanel } from './relay/RelayCasesPanel';
 import { RelayAnalyticsPanel } from './relay/RelayAnalyticsPanel';
 import type { RelaySessionRecord } from '../types/relay';
 
-// Dynamically import the ConversationComponent with ssr disabled
-const ConversationComponent = dynamic(() => import('./ConversationComponent'), {
-  ssr: false,
-});
-
-// AgoraProviders is loaded client-only via a useEffect dynamic import to avoid
-// Turbopack / next/dynamic chunk-cache issues on Vercel.  The state holds the
-// resolved component (or null while loading) so the render tree never sees an
-// undefined element type.
+// ConversationComponent is loaded client-only via a useEffect dynamic import,
+// same as AgoraProviders — using the exact pattern that resolves the Turbopack
+// next/dynamic tree-shake bug that caused React error #130 (undefined element
+// type) in production builds.
 
 let sessionSeq = 0;
 
@@ -69,6 +64,26 @@ export default function LandingPage() {
       })
       .catch((err) => {
         console.error('Failed to load AgoraProviders:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ConversationComponent is resolved client-only the same way to keep the live
+  // view valid until both it and the provider are ready. Rendering it before it
+  // is loaded would hit an undefined element type in production.
+  const [ConversationEl, setConversationEl] = useState<
+    React.ComponentType<ConversationComponentProps> | null
+  >(null);
+  useEffect(() => {
+    let cancelled = false;
+    import('./ConversationComponent')
+      .then((m) => {
+        if (!cancelled) setConversationEl(() => m.default);
+      })
+      .catch((err) => {
+        console.error('Failed to load ConversationComponent:', err);
       });
     return () => {
       cancelled = true;
@@ -268,9 +283,9 @@ export default function LandingPage() {
       )}
       <Suspense fallback={<LoadingSkeleton />}>
         <ErrorBoundary>
-          {AgoraProviderEl ? (
+          {AgoraProviderEl && ConversationEl ? (
             <AgoraProviderEl>
-              <ConversationComponent
+              <ConversationEl
                 agoraData={agoraData}
                 rtmClient={rtmClient}
                 onTokenWillExpire={handleTokenWillExpire}
