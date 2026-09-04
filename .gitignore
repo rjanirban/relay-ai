@@ -139,3 +139,8 @@ dist
 .DS_Store
 .vercel
 .env*
+
+# agent tooling / platform artifacts
+.agents/
+.netlify/
+skills-lock.json
